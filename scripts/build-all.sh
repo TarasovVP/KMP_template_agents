@@ -56,11 +56,11 @@ run_check ios     check_ios
 run_check web     check_web
 
 echo
-printf '%-10s | %-4s | %-6s\n' project result time
-printf '%-10s-+-%-4s-+-%-6s\n' ---------- ---- ------
+printf '%-10s | %-6s | %-6s\n' project result time
+printf '%-10s-+-%-6s-+-%-6s\n' ---------- ------ ------
 fail=0
 for i in "${!names[@]}"; do
-  printf '%-10s | %-4s | %-6s\n' "${names[$i]}" "${results[$i]}" "${times[$i]}"
+  printf '%-10s | %-6s | %-6s\n' "${names[$i]}" "${results[$i]}" "${times[$i]}"
   if [ "${results[$i]}" != "ok" ]; then
     fail=1
     printf '%s\n' "${tails[$i]}" | sed 's/^/    | /'

@@ -1,0 +1,7 @@
+KMP_template_android/
+KMP_template_desktop/
+KMP_template_ios/
+KMP_template_shared/
+KMP_template_web/
+logs/
+.DS_Store

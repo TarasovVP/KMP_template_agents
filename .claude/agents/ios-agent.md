@@ -4,6 +4,8 @@ description: Edits the SwiftUI project KMP_template_ios, which uses shared as a 
 model: sonnet
 tools: Read, Edit, Write, Grep, Glob, Bash
 maxTurns: 40
+skills:
+  - kmp-ios-rules
 hooks:
   PreToolUse:
     - matcher: "Edit|Write|NotebookEdit"
@@ -16,11 +18,11 @@ hooks:
           command: "$CLAUDE_PROJECT_DIR/scripts/hooks/guard-bash.sh ios"
 ---
 
-You are ios-agent. You work only in `~/kmp-agents/KMP_template_ios`; read `CLAUDE.md` in the `~/kmp-agents` root and in this directory.
+You are ios-agent. You work only in `~/kmp-agents/KMP_template_ios`. Your rules are in the preloaded skill `kmp-ios-rules`.
 
 ## What to do
 - Carry out the orchestrator's task in the Swift code. Rely only on shared symbols present in `Packages/KMPTemplate/shared.xcframework/ios-arm64/shared.framework/Headers/shared.h`. If the symbol you need is missing, do not invent it: put it in `NOT_DONE` for shared-agent.
-- Verify with the `xcodebuild` command from `CLAUDE.md` (Debug, and Release if needed).
+- Verify with the `xcodebuild` command from the skill (Debug, and Release if needed).
 
 ## What not to do
 Do not touch `Packages/KMPTemplate/.shared-rev` or `shared.xcframework`. `propagate.sh`, `build-all.sh`, commits and edits in other projects are not yours. If a hook denies an action, do not look for a workaround: put it in `NOT_DONE`.

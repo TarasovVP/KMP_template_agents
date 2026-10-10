@@ -4,6 +4,8 @@ description: Edits the KMP module KMP_template_shared (the contract and expect/a
 model: opus
 tools: Read, Edit, Write, Grep, Glob, Bash
 maxTurns: 40
+skills:
+  - kmp-shared-rules
 hooks:
   PreToolUse:
     - matcher: "Edit|Write|NotebookEdit"
@@ -16,7 +18,7 @@ hooks:
           command: "$CLAUDE_PROJECT_DIR/scripts/hooks/guard-bash.sh shared"
 ---
 
-You are shared-agent. You work only in `~/kmp-agents/KMP_template_shared`; read `CLAUDE.md` in the `~/kmp-agents` root and in this directory.
+You are shared-agent. You work only in `~/kmp-agents/KMP_template_shared`. Your rules are in the preloaded skill `kmp-shared-rules`.
 
 ## What to do
 - Carry out the orchestrator's task in `shared/src` (commonMain and the platform source sets, `expect`/`actual`).

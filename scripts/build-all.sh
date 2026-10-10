@@ -29,13 +29,16 @@ check_desktop() {
   local cp_file out
   cp_file="$(mktemp)"
   mvn -B -o -q dependency:build-classpath -Dmdep.outputFile="$cp_file" || return 1
-  out="$(printf '%s\n/exit\n' 'System.out.println(new com.tarasovvp.kmptemplate.SystemInfo().getInfo());' \
+  out="$(printf '%s\n%s\n/exit\n' \
+          'System.out.println("info=" + new com.tarasovvp.kmptemplate.SystemInfo().getInfo());' \
+          'System.out.println("deviceModel=" + new com.tarasovvp.kmptemplate.SystemInfo().getDeviceModel());' \
         | jshell --class-path "$(cat "$cp_file"):target/classes" -s 2>&1)"
   rm -f "$cp_file"
   echo "$out"
   # jshell exits 0 even when the snippet throws, so check the output
-  echo "$out" | grep -q 'Hello from KMP module' || { echo "smoke: expected greeting not printed"; return 1; }
-  echo "$out" | grep -qE 'Exception|Error' && { echo "smoke: exception in output"; return 1; }
+  echo "$out" | grep -qE 'Exception|Error' && { echo "SMOKE FAIL (desktop): behaviour is broken, not the build: exception in jshell output"; return 1; }
+  echo "$out" | grep -q 'Hello from KMP module' || { echo "SMOKE FAIL (desktop): behaviour is broken, not the build: getInfo() did not print the greeting"; return 1; }
+  echo "$out" | grep -q 'deviceModel=Desktop (' || { echo "SMOKE FAIL (desktop): behaviour is broken, not the build: getDeviceModel() must start with \"Desktop (\""; return 1; }
   return 0
 }
 check_ios() {
@@ -43,7 +46,10 @@ check_ios() {
     -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/kmp-ios-dd \
     CODE_SIGNING_ALLOWED=NO build
 }
-check_web()     { cd "$ROOT/KMP_template_web" && npm run build; }
+check_web() {
+  cd "$ROOT/KMP_template_web" && npm run build \
+    && node --preserve-symlinks "$ROOT/scripts/smoke/web-smoke.mjs" "$ROOT/KMP_template_web"
+}
 
 if [ "${1:-}" = "--propagate" ]; then
   run_check propagate "$ROOT/scripts/propagate.sh"

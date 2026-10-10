@@ -1,13 +1,12 @@
 // Behavioural smoke for web: load the shared package the way app.js does and call it.
-// Usage: node --preserve-symlinks scripts/smoke/web-smoke.mjs <web-dir> <browser|node>
+// Usage (via scripts/smoke/web-smoke.sh): node --preserve-symlinks scripts/smoke/web-smoke.mjs <web-dir> <browser|node>
 // The package is a symlink into KMP_template_shared; --preserve-symlinks makes its dependencies
 // (@js-joda/core, ...) resolve from the web project's node_modules (like preserveSymlinks in vite.config.js).
 //
 //   browser: a minimal navigator is stubbed, as in a page; getDeviceModel() must be "Browser".
 //   node:    plain Node, no stub; getDeviceModel() must be "Node".
 //
-// The node variant is EXPECTED TO FAIL while shared's jsMain JsPlatformHelper reads navigator.userAgent unconditionally
-// (ReferenceError under Node < 21; "Browser" under Node >= 21). It goes green once shared is fixed.
+// (Before shared commit 1085402 the node variant failed: JsPlatformHelper read navigator.userAgent unconditionally.)
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';

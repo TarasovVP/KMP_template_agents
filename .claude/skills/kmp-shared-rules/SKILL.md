@@ -25,6 +25,13 @@ In the report, mark each of the four exports as verified or not, and by what.
 - XCFramework: `... assembleSharedReleaseXCFramework`; JS library: `... :shared:jsBrowserProductionLibraryDistribution`
 There are no tests in the module yet: verification is a successful `assemble` plus inspecting the header/`.d.ts`.
 
+## Verify JS behaviour after any edit in jsMain or commonMain
+Compiling is not enough: rebuild the JS distribution and run both web smoke variants (no `propagate.sh` needed, the web project reads the build directory through a symlink):
+1. `./KMP_template_shared/gradlew -p KMP_template_shared :shared:jsBrowserProductionLibraryDistribution`
+2. `scripts/smoke/web-smoke.sh browser` (a stubbed `navigator`, expects `getDeviceModel()` = "Browser")
+3. `scripts/smoke/web-smoke.sh node` (plain Node, expects "Node")
+Put the output of both runs in `VERIFIED_BY`. A failing variant is a behaviour defect: fix it in shared or, if the cause is outside your directory, put it in `NOT_DONE`.
+
 ## Note
 Kotlin/Native strings are stored in the binary as UTF-16LE: plain `strings` does not find them.
 

@@ -203,6 +203,26 @@ check 2 "xcodebuild (orchestrator profile)"      "$(mkjson Bash command "xcodebu
 check 2 "gradle (orchestrator profile)"          "$(mkjson Bash command "./KMP_template_shared/gradlew -p KMP_template_shared assemble")" "${B[@]}"
 check 2 "empty command"                          "$(mkjson Bash command "")" "${B[@]}"
 
+echo "--- guard-bash.sh shared: web-smoke.sh"
+B=(guard-bash.sh shared)
+check 0 "web-smoke.sh browser"                   "$(mkjson Bash command "scripts/smoke/web-smoke.sh browser")" "${B[@]}"
+check 0 "web-smoke.sh node"                      "$(mkjson Bash command "scripts/smoke/web-smoke.sh node")" "${B[@]}"
+check 0 "./web-smoke.sh node"                    "$(mkjson Bash command "./scripts/smoke/web-smoke.sh node")" "${B[@]}"
+check 0 "absolute web-smoke.sh browser"          "$(mkjson Bash command "$ROOT/scripts/smoke/web-smoke.sh browser")" "${B[@]}"
+check 2 "web-smoke.sh other argument"            "$(mkjson Bash command "scripts/smoke/web-smoke.sh evil")" "${B[@]}"
+check 2 "web-smoke.sh no argument"               "$(mkjson Bash command "scripts/smoke/web-smoke.sh")" "${B[@]}"
+check 2 "web-smoke.sh two arguments"             "$(mkjson Bash command "scripts/smoke/web-smoke.sh browser node")" "${B[@]}"
+check 2 "web-smoke.sh chained"                   "$(mkjson Bash command "scripts/smoke/web-smoke.sh node; rm -rf x")" "${B[@]}"
+check 2 "web-smoke.mjs directly"                 "$(mkjson Bash command "node --preserve-symlinks scripts/smoke/web-smoke.mjs x node")" "${B[@]}"
+check 2 "scripts/build-all.sh (shared)"          "$(mkjson Bash command "scripts/build-all.sh")" "${B[@]}"
+check 2 "scripts/propagate.sh (shared)"          "$(mkjson Bash command "scripts/propagate.sh")" "${B[@]}"
+check 2 "scripts/check-propagation.sh (shared)"  "$(mkjson Bash command "scripts/check-propagation.sh")" "${B[@]}"
+check 2 "scripts/hooks/guard-bash.sh (shared)"   "$(mkjson Bash command "scripts/hooks/guard-bash.sh shared")" "${B[@]}"
+check 2 "other smoke script"                     "$(mkjson Bash command "scripts/smoke/other.sh node")" "${B[@]}"
+check 2 "web-smoke.sh outside ~/kmp-agents"      "$(mkjson Bash command "/tmp/scripts/smoke/web-smoke.sh node")" "${B[@]}"
+check 2 "web-smoke.sh (ios profile)"             "$(mkjson Bash command "scripts/smoke/web-smoke.sh node")" guard-bash.sh ios
+check 2 "web-smoke.sh (orchestrator profile)"    "$(mkjson Bash command "scripts/smoke/web-smoke.sh node")" guard-bash.sh orchestrator
+
 echo
 echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

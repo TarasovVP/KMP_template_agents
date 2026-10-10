@@ -51,7 +51,7 @@ check_web() {
   # both variants always run; the summary shows which one failed (see scripts/smoke/web-smoke.mjs)
   local rc=0 mode
   for mode in browser node; do
-    node --preserve-symlinks "$ROOT/scripts/smoke/web-smoke.mjs" "$ROOT/KMP_template_web" "$mode" || rc=1
+    "$ROOT/scripts/smoke/web-smoke.sh" "$mode" || rc=1
   done
   return "$rc"
 }

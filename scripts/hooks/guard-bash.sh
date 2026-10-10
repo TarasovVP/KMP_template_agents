@@ -25,6 +25,7 @@ SEARCH_FORMS="  find <paths inside ~/kmp-agents> [-name|-iname|-path|-ipath 'pat
 case "$PROFILE" in
   shared) FORMS="  ./KMP_template_shared/gradlew -p KMP_template_shared <tasks and flags> (no 'publish' tasks)
   git -C KMP_template_shared status|diff|log [args]
+  scripts/smoke/web-smoke.sh browser|node   (web behaviour smoke; run after :shared:jsBrowserProductionLibraryDistribution)
 $SEARCH_FORMS"
           FOOTER="Publishing (publish*), propagate.sh, build-all.sh, commits and edits through the shell (sed -i, tee, redirects) are not available to you.
 If you need such an operation, do not work around the restriction: put it in NOT_DONE of your report and the orchestrator will do it." ;;
@@ -214,6 +215,12 @@ orchestrator_profile() {
 case "$PROFILE" in
   orchestrator) orchestrator_profile; exit 0 ;;
   shared)
+    case "${TOK[0]}" in */*)
+      if [ "$(resolve_path "${TOK[0]}" "$cwd")" = "$ROOT/scripts/smoke/web-smoke.sh" ]; then
+        if [ "$nt" -eq 2 ] && { [ "${TOK[1]}" = browser ] || [ "${TOK[1]}" = node ]; }; then exit 0; fi
+        deny_form "web-smoke.sh accepts exactly one argument: browser or node"
+      fi ;;
+    esac
     gp="./KMP_template_shared/gradlew -p KMP_template_shared"
     if [[ "$cmd" == "$gp" || "$cmd" == "$gp "* ]]; then
       rest="${cmd#"$gp"}"

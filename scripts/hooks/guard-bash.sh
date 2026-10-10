@@ -14,6 +14,15 @@ export LC_ALL=C
 PROFILE="${1:-}"
 INPUT="$(cat)"
 cmd="$(json_get tool_input.command)"
+
+# The orchestrator runs as the main session (--agent), so its frontmatter hook fires for EVERY Bash call of the session,
+# including calls made by its subagents (which are checked by their own hooks). Hook input of a subagent call carries
+# agent_id (and agent_type, e.g. "web-agent"); a call by the orchestrator itself has no agent_id. If agent_id is absent or
+# the agent_type is the orchestrator, the call is checked as the orchestrator's (fail-closed for it).
+if [ "$PROFILE" = orchestrator ]; then
+  caller_id="$(json_get agent_id)"; caller_type="$(json_get agent_type)"
+  if [ -n "$caller_id" ] && [ "$caller_type" != orchestrator ]; then exit 0; fi
+fi
 cwd="$(json_get cwd)"; [ -n "$cwd" ] || cwd="$PWD"
 ROOT="$(resolve_path "$HOME/kmp-agents" "/")"
 

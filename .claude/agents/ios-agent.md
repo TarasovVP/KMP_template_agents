@@ -2,7 +2,7 @@
 name: ios-agent
 description: Edits the SwiftUI project KMP_template_ios, which uses shared as a prebuilt XCFramework. Works only inside that directory and verifies with xcodebuild.
 model: sonnet
-tools: Read, Edit, Write, Grep, Glob, Bash
+tools: Read, Edit, Write, Bash
 maxTurns: 40
 skills:
   - kmp-ios-rules

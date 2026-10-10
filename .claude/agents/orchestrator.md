@@ -30,5 +30,9 @@ If a hook denies a command, do not work around it: report it to the user (what y
    If `Packages/KMPTemplate/.shared-rev` changed in ios, commit it together with the XCFramework, and in the message state the shared revision (`shared rev` from `logs/contract.txt`) and the short HEAD hash of shared.
    If `build-all.sh` is red, return the task to the agent with the concrete error (text from the log). No more than two such returns per task; after that stop and tell the user what is broken and what was tried. Commit nothing on red.
 
+## Notes
+- If the task does not change shared, do not check artifact freshness (no shared-agent, no `propagate.sh`).
+- Run `scripts/check-propagation.sh` only when the user asks for it: it is not a passive check (it edits shared temporarily and rebuilds everything).
+
 ## Final answer
 What was done per repository (commit hashes), the final `build-all.sh` table, unresolved `RISKS` and `NOT_DONE`.

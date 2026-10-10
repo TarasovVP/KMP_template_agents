@@ -294,6 +294,30 @@ check 2 "git commit (web profile)"               "$(mkjson Bash command "git -C 
 check 2 "propagate.sh (web profile)"             "$(mkjson Bash command "scripts/propagate.sh")" "${B[@]}"
 check 2 "cat package.json"                       "$(mkjson Bash command "cat KMP_template_web/package.json")" "${B[@]}"
 
+echo "--- guard-paths.sh for android, desktop, web"
+for plat in android desktop web; do
+  PD="$ROOT/KMP_template_$plat"
+  case "$plat" in android) OTHER="$ROOT/KMP_template_web" ;; *) OTHER="$ROOT/KMP_template_android" ;; esac
+  check 0 "$plat: edit inside own dir"           "$(mkjson Edit file_path "$PD/some/dir/File.x")" guard-paths.sh "KMP_template_$plat"
+  check 2 "$plat: edit in another project"       "$(mkjson Edit file_path "$OTHER/some/File.x")" guard-paths.sh "KMP_template_$plat"
+  check 2 "$plat: ../ escape"                    "$(mkjson Write file_path "$PD/../KMP_template_shared/x")" guard-paths.sh "KMP_template_$plat"
+done
+
+echo "--- guard-bash.sh orchestrator: calls made by subagents"
+B=(guard-bash.sh orchestrator)
+mkjson_agent() {   # mkjson_agent <command> <agent_id> <agent_type>
+  jq -nc --arg v "$1" --arg c "$ROOT" --arg i "$2" --arg t "$3" '{tool_name:"Bash", cwd:$c, agent_id:$i, agent_type:$t, tool_input:{command:$v}}'
+}
+check 0 "subagent call (web-agent) passes through"      "$(mkjson_agent "npm --prefix KMP_template_web run build" a1b2c3 web-agent)" "${B[@]}"
+check 0 "subagent call (android-agent) passes through"  "$(mkjson_agent "./KMP_template_android/gradlew -p KMP_template_android :app:assembleDebug" a1b2c3 android-agent)" "${B[@]}"
+check 0 "subagent call, command the orchestrator lacks" "$(mkjson_agent "mvn -f KMP_template_desktop/pom.xml -o compile" a1b2c3 desktop-agent)" "${B[@]}"
+check 2 "same command without agent_id is checked"      "$(mkjson Bash command "npm --prefix KMP_template_web run build")" "${B[@]}"
+check 2 "agent_id empty -> checked"                     "$(mkjson_agent "npm --prefix KMP_template_web run build" "" "")" "${B[@]}"
+check 2 "agent_type only (main session --agent) checked" "$(mkjson_agent "sed -i x y" "" orchestrator)" "${B[@]}"
+check 2 "agent_id with agent_type orchestrator checked" "$(mkjson_agent "git -C . push" a1b2c3 orchestrator)" "${B[@]}"
+check 0 "orchestrator own allowed command, agent_type"  "$(mkjson_agent "git -C . status" "" orchestrator)" "${B[@]}"
+check 2 "other profile ignores agent_id (shared)"       "$(mkjson_agent "sed -i x y" a1b2c3 web-agent)" guard-bash.sh shared
+
 echo
 echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

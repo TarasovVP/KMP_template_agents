@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Bash: single plain commands only, matched against a per-profile whitelist.
-# Usage: guard-bash.sh <shared|ios|orchestrator>      (stdin: hook JSON)
+# Usage: guard-bash.sh <shared|ios|android|desktop|web|orchestrator>      (stdin: hook JSON)
 #
 # The command is tokenized here. Outside single quotes only [A-Za-z0-9_./=:,+@%-] and spaces are accepted
 # (so no ; & | ` $ < > \ ( ) * ? [ ] { } " # ! newline); a leading ~/ is expanded to $HOME.
@@ -32,6 +32,24 @@ If you need such an operation, do not work around the restriction: put it in NOT
   ios)    FORMS="  xcodebuild -project KMP_template_ios/KMP_template_ios.xcodeproj [-scheme KMP_template_ios] [-configuration Debug|Release]
       [-destination 'generic/platform=iOS Simulator'] [-derivedDataPath /tmp/<name>] [CODE_SIGNING_ALLOWED=NO] [-quiet] [build|clean|test]
   git -C KMP_template_ios status|diff|log [args]
+$SEARCH_FORMS"
+          FOOTER="Publishing (publish*), propagate.sh, build-all.sh, commits and edits through the shell (sed -i, tee, redirects) are not available to you.
+If you need such an operation, do not work around the restriction: put it in NOT_DONE of your report and the orchestrator will do it." ;;
+  android) FORMS="  ./KMP_template_android/gradlew -p KMP_template_android <assembleDebug|:app:assembleDebug|testDebugUnitTest|:app:testDebugUnitTest|help> [-q] [--console=plain]
+  git -C KMP_template_android status|diff|log [args]
+$SEARCH_FORMS"
+          FOOTER="Publishing (publish*), propagate.sh, build-all.sh, commits and edits through the shell (sed -i, tee, redirects) are not available to you.
+If you need such an operation, do not work around the restriction: put it in NOT_DONE of your report and the orchestrator will do it." ;;
+  desktop) FORMS="  mvn -f KMP_template_desktop/pom.xml -o [-q] compile|test
+  scripts/smoke/desktop-smoke.sh   (behaviour smoke; run after mvn ... compile)
+  git -C KMP_template_desktop status|diff|log [args]
+$SEARCH_FORMS"
+          FOOTER="Publishing (publish*), propagate.sh, build-all.sh, commits and edits through the shell (sed -i, tee, redirects) are not available to you.
+If you need such an operation, do not work around the restriction: put it in NOT_DONE of your report and the orchestrator will do it." ;;
+  web)    FORMS="  npm --prefix KMP_template_web run build
+  npm --prefix KMP_template_web install --ignore-scripts
+  scripts/smoke/web-smoke.sh browser|node
+  git -C KMP_template_web status|diff|log [args]
 $SEARCH_FORMS"
           FOOTER="Publishing (publish*), propagate.sh, build-all.sh, commits and edits through the shell (sed -i, tee, redirects) are not available to you.
 If you need such an operation, do not work around the restriction: put it in NOT_DONE of your report and the orchestrator will do it." ;;
@@ -211,16 +229,85 @@ orchestrator_profile() {
   deny_form "command is not in the orchestrator profile whitelist: $cmd"
 }
 
+# smoke_script <name> <allowed-arg|-|...>: TOK[0] is exactly ~/kmp-agents/scripts/smoke/<name> with one of the listed args
+# ("-" = no argument). Returns 0 if allowed, 1 if TOK[0] is a different command, denies if it is this script with wrong args.
+smoke_script() {
+  local name="$1" a; shift
+  case "${TOK[0]}" in */*) ;; *) return 1 ;; esac
+  [ "$(resolve_path "${TOK[0]}" "$cwd")" = "$ROOT/scripts/smoke/$name" ] || return 1
+  for a in "$@"; do
+    if [ "$a" = "-" ]; then [ "$nt" -eq 1 ] && return 0
+    else [ "$nt" -eq 2 ] && [ "${TOK[1]}" = "$a" ] && return 0; fi
+  done
+  deny_form "$name: arguments are not allowed ($* )"
+}
+
+own_git() {   # own_git <repo-dir>: git -C <repo> status|diff|log [args]
+  local g="git -C $1" sub rest
+  for sub in status diff log; do
+    if [[ "$cmd" == "$g $sub" || "$cmd" == "$g $sub "* ]]; then
+      rest="${cmd#"$g $sub"}"; git_args_ok $rest; return 0
+    fi
+  done
+  return 1
+}
+
+in_list() {   # in_list <word> <allowed...>
+  local w="$1" a; shift
+  for a in "$@"; do [ "$a" = "$w" ] && return 0; done
+  return 1
+}
+
+platform_profile() {
+  local k ntask=0 off=0 t
+  case "$PROFILE" in
+    android)
+      own_git KMP_template_android && return 0
+      if [ "${TOK[0]}" = "./KMP_template_android/gradlew" ] && [ "$nt" -ge 4 ] && [ "${TOK[1]}" = "-p" ] && [ "${TOK[2]}" = "KMP_template_android" ]; then
+        for ((k = 3; k < nt; k++)); do
+          t="${TOK[$k]}"
+          case "$(printf '%s' "$t" | tr '[:upper:]' '[:lower:]')" in *publish*) deny "DENIED: task '$t' contains publish. Publishing is done only by the orchestrator.
+Put it in NOT_DONE of your report." ;; esac
+          if in_list "$t" -q --console=plain; then :
+          elif in_list "$t" assembleDebug :app:assembleDebug testDebugUnitTest :app:testDebugUnitTest help; then ntask=$((ntask + 1))
+          else deny_form "gradle: '$t' is not allowed (tasks: assembleDebug :app:assembleDebug testDebugUnitTest :app:testDebugUnitTest help; flags: -q --console=plain)"; fi
+        done
+        [ "$ntask" -gt 0 ] || deny_form "gradle: give at least one task"
+        return 0
+      fi
+      deny_form "command is not in the android profile whitelist: $cmd" ;;
+    desktop)
+      own_git KMP_template_desktop && return 0
+      if smoke_script desktop-smoke.sh -; then return 0; fi
+      if [ "${TOK[0]}" = mvn ] && [ "$nt" -ge 4 ] && [ "${TOK[1]}" = "-f" ] && [ "${TOK[2]}" = "KMP_template_desktop/pom.xml" ]; then
+        for ((k = 3; k < nt; k++)); do
+          t="${TOK[$k]}"
+          if [ "$t" = "-o" ]; then off=1
+          elif [ "$t" = "-q" ]; then :
+          elif in_list "$t" compile test; then ntask=$((ntask + 1))
+          else deny_form "mvn: '$t' is not allowed (flags: -o -q; phases: compile test)"; fi
+        done
+        [ "$off" -eq 1 ] || deny_form "mvn: -o (offline) is required"
+        [ "$ntask" -gt 0 ] || deny_form "mvn: give a phase (compile or test)"
+        return 0
+      fi
+      deny_form "command is not in the desktop profile whitelist: $cmd" ;;
+    web)
+      own_git KMP_template_web && return 0
+      if smoke_script web-smoke.sh browser node; then return 0; fi
+      if [ "${TOK[0]}" = npm ] && [ "$nt" -ge 3 ] && [ "${TOK[1]}" = "--prefix" ] && [ "${TOK[2]}" = "KMP_template_web" ]; then
+        if [ "$nt" -eq 5 ] && [ "${TOK[3]}" = run ] && [ "${TOK[4]}" = build ]; then return 0; fi
+        if [ "$nt" -eq 5 ] && [ "${TOK[3]}" = install ] && [ "${TOK[4]}" = "--ignore-scripts" ]; then return 0; fi
+      fi
+      deny_form "command is not in the web profile whitelist: $cmd" ;;
+  esac
+}
+
 # ---- per-profile commands (these match the raw command string; the tokenizer above has already vetted the characters)
 case "$PROFILE" in
   orchestrator) orchestrator_profile; exit 0 ;;
   shared)
-    case "${TOK[0]}" in */*)
-      if [ "$(resolve_path "${TOK[0]}" "$cwd")" = "$ROOT/scripts/smoke/web-smoke.sh" ]; then
-        if [ "$nt" -eq 2 ] && { [ "${TOK[1]}" = browser ] || [ "${TOK[1]}" = node ]; }; then exit 0; fi
-        deny_form "web-smoke.sh accepts exactly one argument: browser or node"
-      fi ;;
-    esac
+    if smoke_script web-smoke.sh browser node; then exit 0; fi
     gp="./KMP_template_shared/gradlew -p KMP_template_shared"
     if [[ "$cmd" == "$gp" || "$cmd" == "$gp "* ]]; then
       rest="${cmd#"$gp"}"
@@ -245,6 +332,7 @@ If you need it, put it in NOT_DONE of your report and return it to the orchestra
     done
     deny_form "command is not in the shared profile whitelist: $cmd"
     ;;
+  android|desktop|web) platform_profile; exit 0 ;;
   ios)
     xp="xcodebuild -project KMP_template_ios/KMP_template_ios.xcodeproj"
     if [[ "$cmd" == "$xp" || "$cmd" == "$xp "* ]]; then

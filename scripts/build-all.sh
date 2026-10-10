@@ -26,20 +26,7 @@ check_android() { cd "$ROOT/KMP_template_android" && ./gradlew --console=plain :
 check_desktop() {
   cd "$ROOT/KMP_template_desktop" || return 1
   mvn -B -o compile || return 1
-  local cp_file out
-  cp_file="$(mktemp)"
-  mvn -B -o -q dependency:build-classpath -Dmdep.outputFile="$cp_file" || return 1
-  out="$(printf '%s\n%s\n/exit\n' \
-          'System.out.println("info=" + new com.tarasovvp.kmptemplate.SystemInfo().getInfo());' \
-          'System.out.println("deviceModel=" + new com.tarasovvp.kmptemplate.SystemInfo().getDeviceModel());' \
-        | jshell --class-path "$(cat "$cp_file"):target/classes" -s 2>&1)"
-  rm -f "$cp_file"
-  echo "$out"
-  # jshell exits 0 even when the snippet throws, so check the output
-  echo "$out" | grep -qE 'Exception|Error' && { echo "SMOKE FAIL (desktop): behaviour is broken, not the build: exception in jshell output"; return 1; }
-  echo "$out" | grep -q 'Hello from KMP module' || { echo "SMOKE FAIL (desktop): behaviour is broken, not the build: getInfo() did not print the greeting"; return 1; }
-  echo "$out" | grep -q 'deviceModel=Desktop (' || { echo "SMOKE FAIL (desktop): behaviour is broken, not the build: getDeviceModel() must start with \"Desktop (\""; return 1; }
-  return 0
+  "$ROOT/scripts/smoke/desktop-smoke.sh"
 }
 check_ios() {
   cd "$ROOT/KMP_template_ios" && xcodebuild -project KMP_template_ios.xcodeproj -scheme KMP_template_ios \

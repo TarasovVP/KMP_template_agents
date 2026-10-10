@@ -26,8 +26,12 @@ All of this is laid out by `scripts/propagate.sh`. Agents do not run it.
 ## Roles and workflow
 1. `orchestrator` - breaks the task down, drives the process, runs the scripts, verifies reports and commits. Does not edit code.
 2. `shared-agent` - edits only `KMP_template_shared`.
-3. `ios-agent` - edits only `KMP_template_ios`.
-Order: orchestrator -> shared-agent -> `propagate.sh` -> ios-agent -> `build-all.sh` -> verify reports against `git diff` and `build-all` -> commits.
+3. `ios-agent` - edits only `KMP_template_ios` (sonnet).
+4. `android-agent` - edits only `KMP_template_android` (sonnet).
+5. `desktop-agent` - edits only `KMP_template_desktop` (haiku).
+6. `web-agent` - edits only `KMP_template_web` (haiku).
+Order: orchestrator -> shared-agent (only if the contract changes) -> `propagate.sh` (only then) -> platform agents (in parallel when independent) -> `build-all.sh` -> verify reports against `git diff` and `build-all` -> commits.
+If a task does not change shared, shared-agent and `propagate.sh` are skipped.
 An agent that needs an edit outside its directory does not work around the restriction; it writes the edit into `NOT_DONE` of its report.
 
 ## Orchestrator only

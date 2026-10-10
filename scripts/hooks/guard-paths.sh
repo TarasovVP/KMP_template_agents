@@ -10,7 +10,7 @@ DIR="${1:-}"
 INPUT="$(cat)"
 file="$(json_get tool_input.file_path)"
 [ -n "$file" ] || file="$(json_get tool_input.notebook_path)"
-[ -n "$file" ] || deny "ОТКАЗ: не удалось определить путь файла из вызова инструмента (или нет jq/node). Правка заблокирована."
+[ -n "$file" ] || deny "DENIED: could not determine the file path from the tool call (or neither jq nor node is available). Edit blocked."
 
 cwd="$(json_get cwd)"; [ -n "$cwd" ] || cwd="$PWD"
 root="$(resolve_path "$HOME/kmp-agents/$DIR" "/")"
@@ -20,7 +20,7 @@ case "$target/" in
   "$root"/*) exit 0 ;;
 esac
 
-deny "ОТКАЗ: $file (→ $target) вне разрешённого каталога $root.
-Тебе разрешены правки только внутри ~/kmp-agents/$DIR. Правки в другом проекте делает его агент
-(shared → shared-agent, ios → ios-agent), а правки харнесса и скриптов — оркестратор.
-Не пытайся обойти запрет: опиши нужную правку в поле NOT_DONE своего отчёта и верни его оркестратору."
+deny "DENIED: $file (-> $target) is outside the allowed directory $root.
+You may only edit inside ~/kmp-agents/$DIR. Edits in another project belong to that project's agent
+(shared -> shared-agent, ios -> ios-agent); edits to the harness and scripts belong to the orchestrator.
+Do not try to work around this: describe the needed edit in the NOT_DONE field of your report and return it to the orchestrator."

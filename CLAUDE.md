@@ -1,35 +1,35 @@
 # kmp-agents
 
-Пять независимых git-репозиториев. `KMP_template_shared` — KMP-модуль, остальные четыре — нативные потребители.
-Каталог `~/kmp-agents` сам тоже репозиторий (харнесс: `scripts/`, `.claude/agents/`, `logs/`).
+Five independent git repositories. `KMP_template_shared` is the KMP module; the other four are native consumers.
+The `~/kmp-agents` directory is itself a repository too (the harness: `scripts/`, `.claude/agents/`, `logs/`).
 
-| Каталог | Что это | Сборка |
+| Directory | What it is | Build |
 |---|---|---|
-| `KMP_template_shared` | KMP-модуль `:shared`: Kotlin 2.2.0, таргеты android/ios/jvm/js. Единственный источник контракта. | Gradle |
-| `KMP_template_android` | Android-приложение (Compose) | Gradle |
-| `KMP_template_desktop` | JavaFX-приложение, Java 17 | Maven |
-| `KMP_template_ios` | SwiftUI-приложение | Xcode |
-| `KMP_template_web` | Vite-страница | npm |
+| `KMP_template_shared` | KMP module `:shared`: Kotlin 2.2.0, targets android/ios/jvm/js. The only source of the contract. | Gradle |
+| `KMP_template_android` | Android app (Compose) | Gradle |
+| `KMP_template_desktop` | JavaFX app, Java 17 | Maven |
+| `KMP_template_ios` | SwiftUI app | Xcode |
+| `KMP_template_web` | Vite page | npm |
 
-## Контракт и expect/actual
-Публичный API живёт в `KMP_template_shared/shared/src/commonMain` (сейчас `SystemInfo().getInfo()`).
-Платформенные части подключаются через `expect fun getPlatform()` и `actual` в `androidMain`, `iosMain`, `jvmMain`, `jsMain`.
-Потребители вызывают shared в одной точке каждый (`MainActivity.kt`, `Main.java`, `ContentView.swift`, `app.js`).
+## Contract and expect/actual
+The public API lives in `KMP_template_shared/shared/src/commonMain` (currently `SystemInfo().getInfo()`).
+Platform parts are wired through `expect fun getPlatform()` with `actual` in `androidMain`, `iosMain`, `jvmMain`, `jsMain`.
+Each consumer calls shared from a single place (`MainActivity.kt`, `Main.java`, `ContentView.swift`, `app.js`).
 
-## Как shared доходит до платформ
-- android, desktop: через `~/.m2` (mavenLocal): `shared-android:1.0`, `shared-jvm:1.0`.
-- ios: готовый `shared.xcframework` в `KMP_template_ios/Packages/KMPTemplate`, подключён как локальный SPM-пакет. CocoaPods нет.
-- web: каталог `shared/build/dist/js/productionLibrary` подключён симлинком в `node_modules`; JS-зависимости дистрибутива должны быть объявлены в `package.json` web.
+## How shared reaches the platforms
+- android, desktop: via `~/.m2` (mavenLocal): `shared-android:1.0`, `shared-jvm:1.0`.
+- ios: a prebuilt `shared.xcframework` in `KMP_template_ios/Packages/KMPTemplate`, attached as a local SPM package. No CocoaPods.
+- web: the `shared/build/dist/js/productionLibrary` directory is symlinked into `node_modules`; the distribution's JS dependencies must be declared in web's `package.json`.
 
-Всё это раскладывает `scripts/propagate.sh`. Агенты его не запускают.
+All of this is laid out by `scripts/propagate.sh`. Agents do not run it.
 
-## Роли и порядок работы
-1. `orchestrator` — разбирает задачу, ведёт процесс, запускает скрипты, проверяет отчёты и коммитит. Код не правит.
-2. `shared-agent` — правит только `KMP_template_shared`.
-3. `ios-agent` — правит только `KMP_template_ios`.
-Порядок: orchestrator → shared-agent → `propagate.sh` → ios-agent → `build-all.sh` → проверка отчётов по `git diff` и `build-all` → коммиты.
-Агент, которому нужна правка вне его каталога, не обходит запрет, а пишет её в `NOT_DONE` своего отчёта.
+## Roles and workflow
+1. `orchestrator` - breaks the task down, drives the process, runs the scripts, verifies reports and commits. Does not edit code.
+2. `shared-agent` - edits only `KMP_template_shared`.
+3. `ios-agent` - edits only `KMP_template_ios`.
+Order: orchestrator -> shared-agent -> `propagate.sh` -> ios-agent -> `build-all.sh` -> verify reports against `git diff` and `build-all` -> commits.
+An agent that needs an edit outside its directory does not work around the restriction; it writes the edit into `NOT_DONE` of its report.
 
-## Только оркестратор
-`scripts/propagate.sh`, `scripts/build-all.sh`, `scripts/check-propagation.sh`, любой `publish*`, любые `git commit`, изменения в `~/kmp-agents/scripts` и `.claude`.
-Платформенные агенты проверяют работу только сборкой своего проекта и возвращают отчёт в формате из своего описания.
+## Orchestrator only
+`scripts/propagate.sh`, `scripts/build-all.sh`, `scripts/check-propagation.sh`, any `publish*`, any `git commit`, changes under `~/kmp-agents/scripts` and `.claude`.
+Platform agents verify their work only by building their own project and return a report in the format from their definition.

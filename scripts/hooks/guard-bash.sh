@@ -9,34 +9,34 @@ PROFILE="${1:-}"
 INPUT="$(cat)"
 cmd="$(json_get tool_input.command)"
 
-FOOTER="Публикация (publish*), propagate.sh, build-all.sh, коммиты и правки через shell (sed -i, tee, перенаправления) тебе недоступны.
-Если нужна такая операция — не обходи запрет: впиши её в NOT_DONE своего отчёта, её выполнит оркестратор."
+FOOTER="Publishing (publish*), propagate.sh, build-all.sh, commits and edits through the shell (sed -i, tee, redirects) are not available to you.
+If you need such an operation, do not work around the restriction: put it in NOT_DONE of your report and the orchestrator will do it."
 
 case "$PROFILE" in
-  shared) FORMS="  ./KMP_template_shared/gradlew -p KMP_template_shared <таски и флаги> (таски без 'publish')
-  git -C KMP_template_shared status|diff|log [аргументы]" ;;
+  shared) FORMS="  ./KMP_template_shared/gradlew -p KMP_template_shared <tasks and flags> (no 'publish' tasks)
+  git -C KMP_template_shared status|diff|log [args]" ;;
   ios)    FORMS="  xcodebuild -project KMP_template_ios/KMP_template_ios.xcodeproj [-scheme KMP_template_ios] [-configuration Debug|Release]
-      [-destination 'generic/platform=iOS Simulator'] [-derivedDataPath /tmp/<имя>] [CODE_SIGNING_ALLOWED=NO] [build|clean|test]
-  git -C KMP_template_ios status|diff|log [аргументы]" ;;
+      [-destination 'generic/platform=iOS Simulator'] [-derivedDataPath /tmp/<name>] [CODE_SIGNING_ALLOWED=NO] [build|clean|test]
+  git -C KMP_template_ios status|diff|log [args]" ;;
   *) deny "guard-bash.sh: unknown or missing profile '$PROFILE' (hook misconfigured)" ;;
 esac
 
-deny_form() { deny "ОТКАЗ: $1
-Разрешённые формы команд (одна простая команда, без ; & | \` \$ < > \\ и переводов строк):
+deny_form() { deny "DENIED: $1
+Allowed command forms (one plain command, no ; & | \` \$ < > \\ or newlines):
 $FORMS
 $FOOTER"; }
 
-[ -n "$cmd" ] || deny_form "пустая команда или не удалось прочитать её из вызова (нет jq/node)"
-case "$cmd" in *$'\n'*|*$'\r'*) deny_form "команда содержит перевод строки" ;; esac
+[ -n "$cmd" ] || deny_form "empty command, or it could not be read from the tool call (neither jq nor node is available)"
+case "$cmd" in *$'\n'*|*$'\r'*) deny_form "the command contains a newline" ;; esac
 if printf '%s' "$cmd" | LC_ALL=C grep -q '[;&|`<>$\\]'; then
-  deny_form "команда содержит запрещённый символ (цепочки, подстановки, перенаправления)"
+  deny_form "the command contains a forbidden character (chaining, substitution, redirects)"
 fi
 
 git_args_ok() {   # remaining args of an allowed read-only git command
   local t
   for t in "$@"; do
-    case "$t" in --output*|--no-index|--ext-diff|-O*) deny_form "git: аргумент '$t' запрещён" ;; esac
-    printf '%s' "$t" | LC_ALL=C grep -Eq '^[-A-Za-z0-9_.:=/~^@,%+]+$' || deny_form "git: недопустимый аргумент '$t'"
+    case "$t" in --output*|--no-index|--ext-diff|-O*) deny_form "git: argument '$t' is not allowed" ;; esac
+    printf '%s' "$t" | LC_ALL=C grep -Eq '^[-A-Za-z0-9_.:=/~^@,%+]+$' || deny_form "git: invalid argument '$t'"
   done
 }
 
@@ -47,13 +47,13 @@ case "$PROFILE" in
       rest="${cmd#"$gp"}"
       for t in $rest; do
         case "$(printf '%s' "$t" | tr '[:upper:]' '[:lower:]')" in
-          *publish*) deny "ОТКАЗ: таск '$t' содержит publish. Публикация артефактов (publishToMavenLocal и т. п.) — только оркестратор через propagate.sh.
-Если в этом есть нужда, впиши это в NOT_DONE своего отчёта и верни его оркестратору." ;;
+          *publish*) deny "DENIED: task '$t' contains publish. Publishing artifacts (publishToMavenLocal etc.) is done only by the orchestrator via propagate.sh.
+If you need it, put it in NOT_DONE of your report and return it to the orchestrator." ;;
         esac
         case "$t" in
           --console=plain|--stacktrace|--info|--warn|--offline|--rerun-tasks|--continue|--parallel|-q|--quiet|-x) ;;
-          -*) deny_form "gradle: флаг '$t' не разрешён" ;;
-          *)  printf '%s' "$t" | LC_ALL=C grep -Eq '^:?[A-Za-z][A-Za-z0-9_.:-]*$' || deny_form "gradle: недопустимый аргумент '$t'" ;;
+          -*) deny_form "gradle: flag '$t' is not allowed" ;;
+          *)  printf '%s' "$t" | LC_ALL=C grep -Eq '^:?[A-Za-z][A-Za-z0-9_.:-]*$' || deny_form "gradle: invalid argument '$t'" ;;
         esac
       done
       exit 0
@@ -64,7 +64,7 @@ case "$PROFILE" in
         rest="${cmd#"$gg $sub"}"; git_args_ok $rest; exit 0
       fi
     done
-    deny_form "команда не входит в белый список профиля shared: $cmd"
+    deny_form "command is not in the shared profile whitelist: $cmd"
     ;;
   ios)
     xp="xcodebuild -project KMP_template_ios/KMP_template_ios.xcodeproj"
@@ -86,7 +86,7 @@ case "$PROFILE" in
             if [ -z "$tail" ] || [ "${tail:0:1}" = " " ]; then rest="$tail"; matched=1; break; fi
           fi
         done
-        [ "$matched" -eq 1 ] || deny_form "xcodebuild: недопустимые аргументы:$rest"
+        [ "$matched" -eq 1 ] || deny_form "xcodebuild: invalid arguments:$rest"
       done
       exit 0
     fi
@@ -96,6 +96,6 @@ case "$PROFILE" in
         rest="${cmd#"$gg $sub"}"; git_args_ok $rest; exit 0
       fi
     done
-    deny_form "команда не входит в белый список профиля ios: $cmd"
+    deny_form "command is not in the ios profile whitelist: $cmd"
     ;;
 esac

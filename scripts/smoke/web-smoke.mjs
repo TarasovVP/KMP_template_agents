@@ -1,22 +1,25 @@
 // Behavioural smoke for web: load the shared package the way app.js does and call it.
-// Usage: node --preserve-symlinks scripts/smoke/web-smoke.mjs <web-dir>
+// Usage: node --preserve-symlinks scripts/smoke/web-smoke.mjs <web-dir> <browser|node>
 // The package is a symlink into KMP_template_shared; --preserve-symlinks makes its dependencies
 // (@js-joda/core, ...) resolve from the web project's node_modules (like preserveSymlinks in vite.config.js).
 //
-// Known defect in shared (jsMain): SystemInfo() -> JsPlatformHelper reads navigator.userAgent unconditionally, so under
-// Node < 21 even getDeviceModel() throws ReferenceError, and on Node >= 21 (navigator exists) it returns "Browser", never
-// "Node". To exercise the code we provide a minimal browser-like navigator, as the page has, and expect "Browser".
-// When shared is fixed to work without navigator, drop the stub and expect "Node".
+//   browser: a minimal navigator is stubbed, as in a page; getDeviceModel() must be "Browser".
+//   node:    plain Node, no stub; getDeviceModel() must be "Node".
+//
+// The node variant is EXPECTED TO FAIL while shared's jsMain JsPlatformHelper reads navigator.userAgent unconditionally
+// (ReferenceError under Node < 21; "Browser" under Node >= 21). It goes green once shared is fixed.
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const webDir = process.argv[2];
-if (!webDir) { console.error('usage: web-smoke.mjs <web-dir>'); process.exit(2); }
+const [webDir, mode] = process.argv.slice(2);
+if (!webDir || !['browser', 'node'].includes(mode)) { console.error('usage: web-smoke.mjs <web-dir> <browser|node>'); process.exit(2); }
+const expected = mode === 'browser' ? 'Browser' : 'Node';
 
-const fail = (msg) => { console.error(`SMOKE FAIL (web): behaviour is broken, not the build: ${msg}`); process.exit(1); };
+const firstLine = (e) => String(e && e.stack ? e.name + ': ' + e.message : e).split('\n')[0];
+const fail = (msg) => { console.error(`SMOKE FAIL (web/${mode}): behaviour is broken, not the build: ${msg}`); process.exit(1); };
 
-if (typeof globalThis.navigator === 'undefined') {
+if (mode === 'browser' && typeof globalThis.navigator === 'undefined') {
   Object.defineProperty(globalThis, 'navigator', { value: { userAgent: 'web-smoke' }, configurable: true });
 }
 
@@ -25,7 +28,7 @@ try {
   const entry = createRequire(join(webDir, 'package.json')).resolve('KMP_template_shared-shared');
   shared = await import(pathToFileURL(entry).href);
 } catch (e) {
-  fail(`cannot load KMP_template_shared-shared: ${e && e.message}`);
+  fail(`cannot load KMP_template_shared-shared: ${firstLine(e)}`);
 }
 
 const { getInfo, getDeviceModel } = shared;
@@ -33,8 +36,9 @@ if (typeof getInfo !== 'function' || typeof getDeviceModel !== 'function') {
   fail('getInfo/getDeviceModel are not exported by the package');
 }
 let info, model;
-try { info = getInfo(); model = getDeviceModel(); } catch (e) { fail(`call threw: ${e && e.message}`); }
+try { info = getInfo(); model = getDeviceModel(); } catch (e) { fail(firstLine(e)); }
 console.log(`getInfo() = ${info}`);
 console.log(`getDeviceModel() = ${model}`);
 if (typeof info !== 'string' || !info.includes('Hello from KMP module')) fail(`getInfo() returned ${JSON.stringify(info)}`);
-if (model !== 'Browser') fail(`getDeviceModel() returned ${JSON.stringify(model)}, expected "Browser" (navigator is defined)`);
+if (model !== expected) fail(`getDeviceModel() returned ${JSON.stringify(model)}, expected "${expected}"`);
+console.log(`SMOKE OK (web/${mode})`);

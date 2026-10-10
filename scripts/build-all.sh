@@ -47,8 +47,13 @@ check_ios() {
     CODE_SIGNING_ALLOWED=NO build
 }
 check_web() {
-  cd "$ROOT/KMP_template_web" && npm run build \
-    && node --preserve-symlinks "$ROOT/scripts/smoke/web-smoke.mjs" "$ROOT/KMP_template_web"
+  cd "$ROOT/KMP_template_web" && npm run build || return 1
+  # both variants always run; the summary shows which one failed (see scripts/smoke/web-smoke.mjs)
+  local rc=0 mode
+  for mode in browser node; do
+    node --preserve-symlinks "$ROOT/scripts/smoke/web-smoke.mjs" "$ROOT/KMP_template_web" "$mode" || rc=1
+  done
+  return "$rc"
 }
 
 if [ "${1:-}" = "--propagate" ]; then

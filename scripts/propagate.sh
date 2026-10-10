@@ -38,24 +38,17 @@ console.log("ok: " + Object.keys(dist).length + " JS dependencies match");
 ' "$JS_DIST/package.json" "$ROOT/KMP_template_web/package.json" || exit 1
 
 echo "==> ios: shared.xcframework (keyed by revision of shared inputs)"
-# Revision of everything that determines the XCFramework: HEAD blobs/trees of the input paths,
-# plus (only if they have uncommitted or untracked changes) a hash of the diff and of the untracked files.
+# Revision of everything that determines the XCFramework, by content only (independent of git state):
+# sorted list of input files (tracked + untracked, not ignored), each as "<path> <git hash-object of the working file>", sha256 of the list.
+# The same content gives the same revision before and after a commit.
 REV_PATHS="shared/src shared/build.gradle.kts build.gradle.kts settings.gradle.kts gradle/libs.versions.toml"
 shared_rev() {
   (
     cd "$SHARED" || exit 1
-    {
-      for p in $REV_PATHS; do echo "$p $(git rev-parse "HEAD:$p")"; done
-      # shellcheck disable=SC2086
-      if [ -n "$(git status --porcelain --untracked-files=all -- $REV_PATHS)" ]; then
-        echo "--- uncommitted diff"
-        git diff HEAD -- $REV_PATHS | shasum -a 256
-        echo "--- untracked"
-        git ls-files --others --exclude-standard -- $REV_PATHS | sort | while IFS= read -r f; do
-          echo "$f $(git hash-object -- "$f")"
-        done
-      fi
-    } | shasum -a 256 | cut -d' ' -f1
+    # shellcheck disable=SC2086
+    git ls-files -co --exclude-standard -- $REV_PATHS | sort -u | while IFS= read -r f; do
+      [ -f "$f" ] && echo "$f $(git hash-object -- "$f")"
+    done | shasum -a 256 | cut -d' ' -f1
   )
 }
 REV="$(shared_rev)" || { echo "cannot compute shared revision" >&2; exit 1; }

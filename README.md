@@ -86,3 +86,7 @@ Platform rules live in preloaded skills (`.claude/skills/kmp-<platform>-rules`).
   no chaining, redirects or substitution outside single quotes, double quotes rejected, `find`/`grep`/`ls` limited to the harness root and read-only forms,
   platform builds and smokes in their own project, `publish*` and commits only for the orchestrator. The orchestrator profile lets calls of the five known subagents through (their own hooks check them).
 - Every denial appends one JSON line to `logs/hook-denials.jsonl` (time, agent type, profile, tool, command or path, reason). Logging never changes a decision.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

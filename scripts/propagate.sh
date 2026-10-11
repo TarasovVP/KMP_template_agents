@@ -18,6 +18,14 @@ echo "==> shared: publish + XCFramework + JS library"
     :shared:assembleSharedReleaseXCFramework \
     :shared:jsBrowserProductionLibraryDistribution) || { echo "shared build failed" >&2; exit 1; }
 
+echo "==> desktop: resolve shared-jvm dependencies online (the only online Maven step; build-all and the agents run Maven offline)"
+if ! resolve_out="$(mvn -B -f "$ROOT/KMP_template_desktop/pom.xml" -q dependency:resolve 2>&1)"; then
+  printf '%s\n' "$resolve_out" | tail -n 15 >&2
+  echo "cannot resolve desktop dependencies online: $(printf '%s\n' "$resolve_out" | grep -m1 -E 'ERROR|Could not|Failed' | cut -c1-300)" >&2
+  exit 1
+fi
+echo "ok: desktop dependencies resolved"
+
 echo "==> web: check JS dependencies declared by the shared distribution"
 node -e '
 const fs = require("fs");

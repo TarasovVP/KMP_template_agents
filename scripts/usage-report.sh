@@ -3,7 +3,8 @@
 # Usage: scripts/usage-report.sh <session-id | path to the main session .jsonl>
 # Reads <session>.jsonl and <session>/subagents/agent-*.jsonl (+ agent-*.meta.json, whose agentType names the agent).
 # One API message is written to the transcript as several lines (one per content block) with the same usage,
-# so usage is counted once per message.id. "calls" = tool_use blocks (counted once per tool_use id). No cost conversion.
+# so usage is counted once per message.id, taking the maximum of each field over its lines (the first line is written while
+# streaming starts and has a near-zero output_tokens). "calls" = tool_use blocks (counted once per tool_use id). No cost conversion.
 set -u
 arg="${1:-}"
 [ -n "$arg" ] || { echo "usage: usage-report.sh <session-id | path to main session .jsonl>" >&2; exit 2; }
@@ -20,24 +21,27 @@ const main = process.argv[1];
 const dir = main.replace(/\.jsonl$/, "") + "/subagents";
 const rows = new Map();   // "agent\tmodel" -> {in,out,cw,cr,calls,runs:Set}
 function add(agent, run, file) {
-  const seenMsg = new Set(), seenTool = new Set();
+  const msgs = new Map(), seenTool = new Set();   // message.id -> {model, in, out, cw, cr} (field-wise max over all lines)
   for (const line of fs.readFileSync(file, "utf8").split("\n")) {
     if (!line) continue;
     let e; try { e = JSON.parse(line); } catch { continue; }
     if (e.type !== "assistant" || !e.message) continue;
-    const m = e.message, u = m.usage;
-    const model = m.model || "?";
-    const key = agent + "\t" + model;
-    if (!rows.has(key)) rows.set(key, { agent, model, in: 0, out: 0, cw: 0, cr: 0, calls: 0, runs: new Set() });
-    const r = rows.get(key); r.runs.add(run);
-    if (u && m.id && !seenMsg.has(m.id)) {
-      seenMsg.add(m.id);
-      r.in += u.input_tokens || 0; r.out += u.output_tokens || 0;
-      r.cw += u.cache_creation_input_tokens || 0; r.cr += u.cache_read_input_tokens || 0;
+    const m = e.message, u = m.usage, model = m.model || "?";
+    const key0 = agent + "\t" + model;
+    if (!rows.has(key0)) rows.set(key0, { agent, model, in: 0, out: 0, cw: 0, cr: 0, calls: 0, runs: new Set() });
+    const r = rows.get(key0); r.runs.add(run);
+    if (u && m.id) {
+      const x = msgs.get(m.id) || (msgs.set(m.id, { model, in: 0, out: 0, cw: 0, cr: 0 }), msgs.get(m.id));
+      x.in = Math.max(x.in, u.input_tokens || 0); x.out = Math.max(x.out, u.output_tokens || 0);
+      x.cw = Math.max(x.cw, u.cache_creation_input_tokens || 0); x.cr = Math.max(x.cr, u.cache_read_input_tokens || 0);
     }
     for (const c of Array.isArray(m.content) ? m.content : []) {
       if (c.type === "tool_use" && c.id && !seenTool.has(c.id)) { seenTool.add(c.id); r.calls++; }
     }
+  }
+  for (const x of msgs.values()) {
+    const r = rows.get(agent + "\t" + x.model);
+    r.in += x.in; r.out += x.out; r.cw += x.cw; r.cr += x.cr;
   }
 }
 // main session: named by its agent-setting entry (e.g. orchestrator), else "main"

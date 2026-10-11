@@ -5,6 +5,7 @@ set -u
 . "$(dirname "$0")/lib.sh"
 
 DIR="${1:-}"
+HOOK_SCOPE="$DIR"
 [ -n "$DIR" ] || deny "guard-paths.sh: allowed directory argument is missing (hook misconfigured)"
 
 INPUT="$(cat)"

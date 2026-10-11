@@ -1,7 +1,25 @@
 # Shared helpers for the guard hooks (sourced, bash 3.2 compatible).
 
-# deny <message>: print the message to stderr and block the tool call (exit 2).
-deny() { printf '%s\n' "$*" >&2; exit 2; }
+# log_denial <message>: append one JSON line to logs/hook-denials.jsonl (override: $HOOK_DENIAL_LOG). Never affects the decision:
+# every failure is ignored. Uses globals set by the hooks: HOOK_SCOPE (profile or directory), INPUT (hook JSON).
+log_denial() {
+  (
+    command -v jq >/dev/null 2>&1 || exit 0
+    local log="${HOOK_DENIAL_LOG:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/logs/hook-denials.jsonl}"
+    local at tool target
+    at="$(json_get agent_type)"; tool="$(json_get tool_name)"
+    target="$(json_get tool_input.command)"
+    [ -n "$target" ] || target="$(json_get tool_input.file_path)"
+    [ -n "$target" ] || target="$(json_get tool_input.notebook_path)"
+    mkdir -p "$(dirname "$log")"
+    jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg at "${at:-main}" --arg scope "${HOOK_SCOPE:-?}" --arg tool "$tool" \
+       --arg target "${target:0:300}" --arg reason "$(printf '%s' "$1" | head -n 1 | cut -c1-300)" \
+       '{ts:$ts, agent_type:$at, scope:$scope, tool_name:$tool, target:$target, reason:$reason}' >> "$log"
+  ) >/dev/null 2>&1 || true
+}
+
+# deny <message>: print the message to stderr, log the denial and block the tool call (exit 2).
+deny() { log_denial "$*"; printf '%s\n' "$*" >&2; exit 2; }
 
 # json_get <dotted.path>: read a string field from $INPUT. jq if installed, else node, else nothing (callers fail closed).
 json_get() {

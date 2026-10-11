@@ -6,7 +6,8 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 export HOME="${HOME:?}"
 LINK="$ROOT/KMP_template_shared/.guard-test-link"
 LINK_IN="$ROOT/KMP_template_shared/.guard-test-link-in"
-trap 'rm -f "$LINK" "$LINK_IN"' EXIT
+DENY_LOG="$(mktemp)"; export HOOK_DENIAL_LOG="$DENY_LOG"   # keep the real logs/hook-denials.jsonl clean
+trap 'rm -f "$LINK" "$LINK_IN" "$DENY_LOG"' EXIT
 ln -s /tmp "$LINK"                                              # symlink pointing outside the allowed dir
 ln -s "$ROOT/KMP_template_shared/shared/src" "$LINK_IN"         # symlink staying inside
 
@@ -363,6 +364,31 @@ check 2 "known agent_type, empty agent_id"       "$(mkjson_agent "sed -i x y" ""
 check 2 "no agent fields at all"                 "$(mkjson Bash command "sed -i x y")" "${B[@]}"
 check 2 "agent_type lookalike"                   "$(mkjson_agent "sed -i x y" a1b2c3 web-agent-evil)" "${B[@]}"
 check 2 "agent_type with different case"         "$(mkjson_agent "sed -i x y" a1b2c3 Web-Agent)" "${B[@]}"
+
+echo "--- denial log (logs/hook-denials.jsonl, redirected to a temp file here)"
+dlines() { wc -l < "$DENY_LOG" | tr -d ' '; }
+n0=$(dlines)
+printf '%s' "$(mkjson Bash command "git -C KMP_template_ios status")" | "$HERE/guard-bash.sh" ios >/dev/null 2>&1; rc=$?
+n1=$(dlines)
+[ "$rc" -eq 0 ] && [ "$n1" -eq "$n0" ] && { pass=$((pass + 1)); echo "ok    allowed call writes no line"; } || { fail=$((fail + 1)); echo "FAIL  allowed call writes no line (rc=$rc, $n0 -> $n1)"; }
+printf '%s' "$(mkjson_agent "sed -i x y" a1b2c3 web-agent)" | "$HERE/guard-bash.sh" web >/dev/null 2>&1; rc=$?
+n2=$(dlines)
+[ "$rc" -eq 2 ] && [ "$n2" -eq $((n1 + 1)) ] && { pass=$((pass + 1)); echo "ok    denied bash call writes exactly one line"; } || { fail=$((fail + 1)); echo "FAIL  denied bash call writes exactly one line (rc=$rc, $n1 -> $n2)"; }
+last="$(tail -n 1 "$DENY_LOG")"
+if command -v jq >/dev/null 2>&1 && printf '%s' "$last" | jq -e '.agent_type == "web-agent" and .scope == "web" and .tool_name == "Bash" and .target == "sed -i x y" and (.reason | length > 0) and (.ts | length > 0)' >/dev/null; then
+  pass=$((pass + 1)); echo "ok    line has agent_type, scope, tool_name, target, reason, ts"
+else fail=$((fail + 1)); echo "FAIL  denial line content: $last"; fi
+printf '%s' "$(mkjson Edit file_path "$I/x")" | "$HERE/guard-paths.sh" KMP_template_shared >/dev/null 2>&1; rc=$?
+n3=$(dlines); last="$(tail -n 1 "$DENY_LOG")"
+if [ "$rc" -eq 2 ] && [ "$n3" -eq $((n2 + 1)) ] && printf '%s' "$last" | jq -e '.agent_type == "main" and .scope == "KMP_template_shared" and .tool_name == "Edit"' >/dev/null; then
+  pass=$((pass + 1)); echo "ok    denied path call: one line, agent_type=main"
+else fail=$((fail + 1)); echo "FAIL  denied path call (rc=$rc, $n2 -> $n3): $last"; fi
+long="$(printf 'x%.0s' $(seq 1 500))"
+printf '%s' "$(mkjson Bash command "git -C KMP_template_ios commit -m $long")" | "$HERE/guard-bash.sh" ios >/dev/null 2>&1
+if [ "$(tail -n 1 "$DENY_LOG" | jq -r '.target | length')" -le 300 ]; then pass=$((pass + 1)); echo "ok    target is cut to 300 characters"; else fail=$((fail + 1)); echo "FAIL  target not cut"; fi
+n4=$(dlines)
+printf '%s' "$(mkjson Bash command "sed -i x y")" | HOOK_DENIAL_LOG=/dev/null/no/such/dir/log.jsonl "$HERE/guard-bash.sh" ios >/dev/null 2>&1; rc=$?
+[ "$rc" -eq 2 ] && [ "$(dlines)" -eq "$n4" ] && { pass=$((pass + 1)); echo "ok    unwritable log: the denial still stands (exit 2)"; } || { fail=$((fail + 1)); echo "FAIL  unwritable log changed the decision (rc=$rc)"; }
 
 echo
 echo "passed: $pass, failed: $fail"

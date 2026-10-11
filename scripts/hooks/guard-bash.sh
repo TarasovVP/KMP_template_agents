@@ -12,6 +12,7 @@ export LC_ALL=C
 . "$(dirname "$0")/lib.sh"
 
 PROFILE="${1:-}"
+HOOK_SCOPE="$PROFILE"
 INPUT="$(cat)"
 cmd="$(json_get tool_input.command)"
 cwd="$(json_get cwd)"; [ -n "$cwd" ] || cwd="$PWD"

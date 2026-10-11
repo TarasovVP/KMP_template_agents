@@ -22,4 +22,10 @@ The JavaFX platform `mac-aarch64` (`javafx.platform` in `pom.xml`) is set on pur
 - Build offline and quiet: `mvn -f KMP_template_desktop/pom.xml -o -q compile` (`test` is also allowed).
 - Behaviour smoke after the build: `scripts/smoke/desktop-smoke.sh` (prints `getInfo()` and `getDeviceModel()`, which must start with "Desktop ("). Put its output in `VERIFIED_BY`.
 
+## Running commands
+- `mvn -f KMP_template_desktop/pom.xml -o -q compile`
+- `scripts/smoke/desktop-smoke.sh`
+
+Run it exactly like this. No pipes, redirects, tail, 2>&1 or echo $? — the Bash tool already returns the output and reports a non-zero exit as an error.
+
 Skill-canary: SKILL-DESKTOP-G47083

@@ -318,6 +318,52 @@ check 2 "agent_id with agent_type orchestrator checked" "$(mkjson_agent "git -C 
 check 0 "orchestrator own allowed command, agent_type"  "$(mkjson_agent "git -C . status" "" orchestrator)" "${B[@]}"
 check 2 "other profile ignores agent_id (shared)"       "$(mkjson_agent "sed -i x y" a1b2c3 web-agent)" guard-bash.sh shared
 
+echo "--- absolute forms of own project paths"
+SA=(guard-bash.sh shared); IA=(guard-bash.sh ios); AA=(guard-bash.sh android); DA=(guard-bash.sh desktop); WA=(guard-bash.sh web)
+check 0 "shared: abs gradlew -p abs"             "$(mkjson Bash command "$ROOT/KMP_template_shared/gradlew -p $ROOT/KMP_template_shared assemble")" "${SA[@]}"
+check 0 "shared: rel gradlew, abs -p"            "$(mkjson Bash command "./KMP_template_shared/gradlew -p $ROOT/KMP_template_shared assemble")" "${SA[@]}"
+check 0 "shared: git -C abs"                     "$(mkjson Bash command "git -C $ROOT/KMP_template_shared status")" "${SA[@]}"
+check 0 "shared: abs form, cwd elsewhere"        "$(mkjson Bash command "git -C $ROOT/KMP_template_shared status" /tmp)" "${SA[@]}"
+check 2 "shared: abs -p into ios"                "$(mkjson Bash command "$ROOT/KMP_template_shared/gradlew -p $ROOT/KMP_template_ios assemble")" "${SA[@]}"
+check 2 "shared: abs gradlew of android"         "$(mkjson Bash command "$ROOT/KMP_template_android/gradlew -p $ROOT/KMP_template_shared assemble")" "${SA[@]}"
+check 2 "shared: abs outside ~/kmp-agents"       "$(mkjson Bash command "/tmp/KMP_template_shared/gradlew -p /tmp/KMP_template_shared assemble")" "${SA[@]}"
+check 2 "shared: git -C abs other repo"          "$(mkjson Bash command "git -C $ROOT/KMP_template_ios status")" "${SA[@]}"
+check 2 "shared: git -C abs subdir"              "$(mkjson Bash command "git -C $ROOT/KMP_template_shared/shared status")" "${SA[@]}"
+check 2 "shared: git -C abs with ../"            "$(mkjson Bash command "git -C $ROOT/KMP_template_shared/../KMP_template_ios status")" "${SA[@]}"
+check 0 "ios: abs -project"                      "$(mkjson Bash command "xcodebuild -project $ROOT/KMP_template_ios/KMP_template_ios.xcodeproj -scheme KMP_template_ios -destination ${Q}generic/platform=iOS Simulator${Q} -quiet build")" "${IA[@]}"
+check 0 "ios: git -C abs"                        "$(mkjson Bash command "git -C $ROOT/KMP_template_ios diff")" "${IA[@]}"
+check 2 "ios: abs -project of another project"   "$(mkjson Bash command "xcodebuild -project /tmp/Other/Other.xcodeproj build")" "${IA[@]}"
+check 2 "ios: abs git -C shared"                 "$(mkjson Bash command "git -C $ROOT/KMP_template_shared status")" "${IA[@]}"
+check 0 "android: abs gradlew -p abs"            "$(mkjson Bash command "$ROOT/KMP_template_android/gradlew -p $ROOT/KMP_template_android :app:assembleDebug")" "${AA[@]}"
+check 0 "android: git -C abs"                    "$(mkjson Bash command "git -C $ROOT/KMP_template_android log -n 2")" "${AA[@]}"
+check 2 "android: abs -p into shared"            "$(mkjson Bash command "$ROOT/KMP_template_android/gradlew -p $ROOT/KMP_template_shared assembleDebug")" "${AA[@]}"
+check 2 "android: abs gradlew of shared"         "$(mkjson Bash command "$ROOT/KMP_template_shared/gradlew -p $ROOT/KMP_template_android assembleDebug")" "${AA[@]}"
+check 2 "android: abs publish"                   "$(mkjson Bash command "$ROOT/KMP_template_android/gradlew -p $ROOT/KMP_template_android publishToMavenLocal")" "${AA[@]}"
+check 0 "desktop: abs mvn -f"                    "$(mkjson Bash command "mvn -f $ROOT/KMP_template_desktop/pom.xml -o -q compile")" "${DA[@]}"
+check 0 "desktop: git -C abs"                    "$(mkjson Bash command "git -C $ROOT/KMP_template_desktop status")" "${DA[@]}"
+check 2 "desktop: abs mvn -f web pom"            "$(mkjson Bash command "mvn -f $ROOT/KMP_template_web/pom.xml -o compile")" "${DA[@]}"
+check 2 "desktop: abs mvn -f outside"            "$(mkjson Bash command "mvn -f /tmp/pom.xml -o compile")" "${DA[@]}"
+check 0 "web: abs npm --prefix"                  "$(mkjson Bash command "npm --prefix $ROOT/KMP_template_web run build")" "${WA[@]}"
+check 0 "web: abs npm install"                   "$(mkjson Bash command "npm --prefix $ROOT/KMP_template_web install --ignore-scripts")" "${WA[@]}"
+check 0 "web: git -C abs"                        "$(mkjson Bash command "git -C $ROOT/KMP_template_web status")" "${WA[@]}"
+check 2 "web: abs npm --prefix desktop"          "$(mkjson Bash command "npm --prefix $ROOT/KMP_template_desktop run build")" "${WA[@]}"
+check 2 "web: abs npm --prefix outside"          "$(mkjson Bash command "npm --prefix /tmp run build")" "${WA[@]}"
+check 2 "web: abs npm install w/o flag"          "$(mkjson Bash command "npm --prefix $ROOT/KMP_template_web install")" "${WA[@]}"
+check 2 "web: git -C abs symlink escape"         "$(mkjson Bash command "git -C $LINK status")" "${WA[@]}"
+
+echo "--- guard-bash.sh orchestrator: which subagent types pass through"
+B=(guard-bash.sh orchestrator)
+for at in shared-agent ios-agent android-agent desktop-agent web-agent; do
+  check 0 "agent_type $at passes"                "$(mkjson_agent "sed -i x y" a1b2c3 "$at")" "${B[@]}"
+done
+check 2 "unknown agent_type"                     "$(mkjson_agent "sed -i x y" a1b2c3 general-purpose)" "${B[@]}"
+check 2 "agent_type Explore"                     "$(mkjson_agent "sed -i x y" a1b2c3 Explore)" "${B[@]}"
+check 2 "empty agent_type, agent_id set"         "$(mkjson_agent "sed -i x y" a1b2c3 "")" "${B[@]}"
+check 2 "known agent_type, empty agent_id"       "$(mkjson_agent "sed -i x y" "" web-agent)" "${B[@]}"
+check 2 "no agent fields at all"                 "$(mkjson Bash command "sed -i x y")" "${B[@]}"
+check 2 "agent_type lookalike"                   "$(mkjson_agent "sed -i x y" a1b2c3 web-agent-evil)" "${B[@]}"
+check 2 "agent_type with different case"         "$(mkjson_agent "sed -i x y" a1b2c3 Web-Agent)" "${B[@]}"
+
 echo
 echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

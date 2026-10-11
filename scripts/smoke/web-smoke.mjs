@@ -40,4 +40,18 @@ console.log(`getInfo() = ${info}`);
 console.log(`getDeviceModel() = ${model}`);
 if (typeof info !== 'string' || !info.includes('Hello from KMP module')) fail(`getInfo() returned ${JSON.stringify(info)}`);
 if (model !== expected) fail(`getDeviceModel() returned ${JSON.stringify(model)}, expected "${expected}"`);
+// getOsVersion() (contract addition): must be exported, callable and return a non-empty string; its meaning is not checked.
+let osVersion;
+try {
+  if (typeof shared.getOsVersion !== 'function') throw new Error('not exported by the package');
+  osVersion = shared.getOsVersion();
+} catch (e) {
+  console.error(`SMOKE FAIL (web/${mode}): getOsVersion() is missing or threw: ${firstLine(e)}`);
+  process.exit(1);
+}
+if (typeof osVersion !== 'string' || osVersion === '') {
+  console.error(`SMOKE FAIL (web/${mode}): getOsVersion() is missing or threw: returned ${JSON.stringify(osVersion)}, expected a non-empty string`);
+  process.exit(1);
+}
+console.log(`getOsVersion() = ${osVersion}`);
 console.log(`SMOKE OK (web/${mode})`);

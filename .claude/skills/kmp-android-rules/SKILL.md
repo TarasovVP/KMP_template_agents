@@ -25,4 +25,9 @@ Allowed tasks: `assembleDebug`, `:app:assembleDebug`, `testDebugUnitTest`, `:app
 ## Known warning
 The `jvmTarget` warning during the build is known. Do not touch it without a separate task.
 
+## Running commands
+- `./KMP_template_android/gradlew -p KMP_template_android :app:assembleDebug :app:testDebugUnitTest --console=plain`
+
+Run it exactly like this. No pipes, redirects, tail, 2>&1 or echo $? — the Bash tool already returns the output and reports a non-zero exit as an error.
+
 Skill-canary: SKILL-ANDROID-HJ193Y

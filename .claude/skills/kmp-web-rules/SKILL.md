@@ -22,4 +22,11 @@ If shared added a JS dependency, declare it in this project's `package.json` and
 - `npm --prefix KMP_template_web run build`
 - both smoke variants: `scripts/smoke/web-smoke.sh browser` and `scripts/smoke/web-smoke.sh node`. Put their output in `VERIFIED_BY`.
 
+## Running commands
+- `npm --prefix KMP_template_web run build`
+- `scripts/smoke/web-smoke.sh browser`
+- `scripts/smoke/web-smoke.sh node`
+
+Run it exactly like this. No pipes, redirects, tail, 2>&1 or echo $? — the Bash tool already returns the output and reports a non-zero exit as an error.
+
 Skill-canary: SKILL-WEB-6TH5GK

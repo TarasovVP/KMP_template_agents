@@ -14,17 +14,21 @@ export LC_ALL=C
 PROFILE="${1:-}"
 INPUT="$(cat)"
 cmd="$(json_get tool_input.command)"
+cwd="$(json_get cwd)"; [ -n "$cwd" ] || cwd="$PWD"
+ROOT="$(resolve_path "$HOME/kmp-agents" "/")"
 
 # The orchestrator runs as the main session (--agent), so its frontmatter hook fires for EVERY Bash call of the session,
 # including calls made by its subagents (which are checked by their own hooks). Hook input of a subagent call carries
-# agent_id (and agent_type, e.g. "web-agent"); a call by the orchestrator itself has no agent_id. If agent_id is absent or
-# the agent_type is the orchestrator, the call is checked as the orchestrator's (fail-closed for it).
+# agent_id and agent_type (e.g. "web-agent"). Only a non-empty agent_id together with one of the five known agent types is
+# passed through; anything else (no fields, empty, unknown type, "orchestrator") is checked as the orchestrator's own call.
 if [ "$PROFILE" = orchestrator ]; then
   caller_id="$(json_get agent_id)"; caller_type="$(json_get agent_type)"
-  if [ -n "$caller_id" ] && [ "$caller_type" != orchestrator ]; then exit 0; fi
+  if [ -n "$caller_id" ]; then
+    case "$caller_type" in
+      shared-agent|ios-agent|android-agent|desktop-agent|web-agent) exit 0 ;;
+    esac
+  fi
 fi
-cwd="$(json_get cwd)"; [ -n "$cwd" ] || cwd="$PWD"
-ROOT="$(resolve_path "$HOME/kmp-agents" "/")"
 
 SEARCH_FORMS="  find <paths inside ~/kmp-agents> [-name|-iname|-path|-ipath 'pat'] [-type f|d] [-maxdepth N] [-mindepth N] [-print]
   grep [-rRnilLcwxEFHhosI] [-A N] [-B N] [-C N] [--include=..] [--exclude=..] [--exclude-dir=..] 'pattern' <paths inside ~/kmp-agents>
@@ -185,6 +189,28 @@ search_ls() {
   if [ "$npaths" -eq 0 ]; then in_root "." || deny_form "ls: the current directory is outside ~/kmp-agents"; fi
 }
 
+# ---- absolute forms of the project paths: rewrite to the canonical relative form when they resolve to exactly the same place
+# (only exact targets: the five project dirs, the gradlew of shared/android, desktop pom.xml, the ios .xcodeproj)
+canonicalize() {
+  local k t r out="" w
+  for ((k = 0; k < nt; k++)); do
+    t="${TOK[$k]}"
+    if [ "${TQ[$k]}" = 0 ] && [ "${t:0:1}" = "/" ]; then
+      r="$(resolve_path "$t" "$cwd")"
+      case "$r" in
+        "$ROOT/KMP_template_shared"|"$ROOT/KMP_template_android"|"$ROOT/KMP_template_desktop"|"$ROOT/KMP_template_ios"|"$ROOT/KMP_template_web"|\
+        "$ROOT/KMP_template_desktop/pom.xml"|"$ROOT/KMP_template_ios/KMP_template_ios.xcodeproj")
+          TOK[$k]="${r#"$ROOT/"}" ;;
+        "$ROOT/KMP_template_shared/gradlew"|"$ROOT/KMP_template_android/gradlew")
+          TOK[$k]="./${r#"$ROOT/"}" ;;
+      esac
+    fi
+    w="${TOK[$k]}"; [ "${TQ[$k]}" = 1 ] && w="'$w'"
+    out="${out:+$out }$w"
+  done
+  cmd="$out"
+}
+
 # ---- search: the same for every profile
 case "${TOK[0]}" in
   find) search_find; exit 0 ;;
@@ -311,6 +337,8 @@ Put it in NOT_DONE of your report." ;; esac
       deny_form "command is not in the web profile whitelist: $cmd" ;;
   esac
 }
+
+[ "$PROFILE" = orchestrator ] || canonicalize
 
 # ---- per-profile commands (these match the raw command string; the tokenizer above has already vetted the characters)
 case "$PROFILE" in

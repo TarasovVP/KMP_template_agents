@@ -35,4 +35,9 @@ Put the output of both runs in `VERIFIED_BY`. A failing variant is a behaviour d
 ## Note
 Kotlin/Native strings are stored in the binary as UTF-16LE: plain `strings` does not find them.
 
+## Running commands
+- `./KMP_template_shared/gradlew -p KMP_template_shared assemble`
+
+Run it exactly like this. No pipes, redirects, tail, 2>&1 or echo $? — the Bash tool already returns the output and reports a non-zero exit as an error.
+
 Skill-canary: SKILL-SHARED-MF3279

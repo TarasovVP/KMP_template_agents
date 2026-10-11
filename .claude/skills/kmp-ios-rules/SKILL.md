@@ -25,4 +25,9 @@ Build with `-quiet`:
 ## Note
 Kotlin/Native strings are stored in the binary as UTF-16LE: plain `strings` does not find them.
 
+## Running commands
+- `xcodebuild -project KMP_template_ios/KMP_template_ios.xcodeproj -scheme KMP_template_ios -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/kmp-ios-dd CODE_SIGNING_ALLOWED=NO -quiet build`
+
+Run it exactly like this. No pipes, redirects, tail, 2>&1 or echo $? — the Bash tool already returns the output and reports a non-zero exit as an error.
+
 Skill-canary: SKILL-IOS-3F8FM1

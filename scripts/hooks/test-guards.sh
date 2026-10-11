@@ -87,7 +87,7 @@ check 0 "xcodebuild Release"                     "$(mkjson Bash command "$X -sch
 check 0 "git -C ios diff"                        "$(mkjson Bash command "git -C KMP_template_ios diff")" "${B[@]}"
 check 2 "xcodebuild other project"               "$(mkjson Bash command "xcodebuild -project Other/Other.xcodeproj -scheme X build")" "${B[@]}"
 check 2 "xcodebuild && rm"                       "$(mkjson Bash command "$X build && rm -rf /tmp/x")" "${B[@]}"
-check 2 "xcodebuild derivedData outside /tmp"    "$(mkjson Bash command "$X -derivedDataPath /Users/x/dd build")" "${B[@]}"
+check 2 "xcodebuild derivedData outside /tmp"    "$(mkjson Bash command "$X -derivedDataPath /var/x/dd build")" "${B[@]}"
 check 2 "xcodebuild unknown arg"                 "$(mkjson Bash command "$X -scheme KMP_template_ios OTHER_LDFLAGS=-evil build")" "${B[@]}"
 check 2 "xcodebuild extra-quoted"                "$(mkjson Bash command "$X -scheme 'KMP_template_ios' build")" "${B[@]}"
 check 2 "gradle (ios profile)"                   "$(mkjson Bash command "$G assemble")" "${B[@]}"

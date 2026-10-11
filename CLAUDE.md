@@ -18,7 +18,7 @@ Each consumer calls shared from a single place (`MainActivity.kt`, `Main.java`, 
 
 ## How shared reaches the platforms
 - android, desktop: via `~/.m2` (mavenLocal): `shared-android:1.0`, `shared-jvm:1.0`.
-- ios: a prebuilt `shared.xcframework` in `KMP_template_ios/Packages/KMPTemplate`, attached as a local SPM package. No CocoaPods.
+- ios: a prebuilt `shared.xcframework` in `KMP_template_ios/Packages/KMPTemplate`, attached as a local SPM package. shared supports CocoaPods through its podspec for external consumers; KMP_template_ios connects shared via SPM; do not touch the podspec or the `cocoapods` block without a separate task.
 - web: the `shared/build/dist/js/productionLibrary` directory is symlinked into `node_modules`; the distribution's JS dependencies must be declared in web's `package.json`.
 
 All of this is laid out by `scripts/propagate.sh`. Agents do not run it.

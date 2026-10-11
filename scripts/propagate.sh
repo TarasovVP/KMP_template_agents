@@ -41,10 +41,10 @@ echo "==> ios: shared.xcframework (keyed by revision of shared inputs)"
 # Revision of everything that determines the iOS XCFramework, by content only (independent of git state):
 # sorted list of input files (tracked + untracked, not ignored), each as "<path> <git hash-object of the working file>", sha256 of the list.
 # The same content gives the same revision before and after a commit.
-# Inputs: build files plus every source set under shared/src EXCEPT the ones that never reach iOS (android*, js*, jvm*).
+# Inputs: build files (incl. gradle.properties, which affects the native build) plus every source set under shared/src EXCEPT the ones that never reach iOS (android*, js*, jvm*).
 # Today that means commonMain and iosMain; an exclusion (not an include list) so that a new source set such as appleMain or
 # nativeMain is covered by default instead of silently producing a stale XCFramework.
-REV_PATHS="shared/src shared/build.gradle.kts build.gradle.kts settings.gradle.kts gradle/libs.versions.toml"
+REV_PATHS="shared/src shared/build.gradle.kts build.gradle.kts settings.gradle.kts gradle.properties gradle/libs.versions.toml"
 shared_rev() {
   (
     cd "$SHARED" || exit 1

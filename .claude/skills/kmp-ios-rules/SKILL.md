@@ -13,7 +13,7 @@ Use `find` and `grep` through Bash (there is no Glob/Grep on this machine), with
 Paths must be inside `~/kmp-agents`; no `-exec`, `-delete`, pipes or double quotes.
 
 ## How shared arrives
-The prebuilt binary `Packages/KMPTemplate/shared.xcframework` is attached as a local SPM package (`Package.swift`, `.binaryTarget`). CocoaPods is gone.
+The prebuilt binary `Packages/KMPTemplate/shared.xcframework` is attached as a local SPM package (`Package.swift`, `.binaryTarget`). shared supports CocoaPods through its podspec for external consumers; KMP_template_ios connects shared via SPM; do not touch the podspec or the `cocoapods` block without a separate task.
 Do not touch `Packages/KMPTemplate/.shared-rev` or the XCFramework itself: the orchestrator updates them through `propagate.sh`.
 Look up the shared API in `Packages/KMPTemplate/shared.xcframework/ios-arm64/shared.framework/Headers/shared.h`; if the symbol you need is missing, that is a task for shared-agent - put it in `NOT_DONE`.
 

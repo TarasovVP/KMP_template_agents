@@ -8,6 +8,9 @@ description: Rules for shared-agent. Preloaded into the agent; not for manual us
 The `:shared` module (Kotlin 2.2.0, AGP 8.11.1, Gradle 8.13). Targets: android (release), iosX64/iosArm64/iosSimulatorArm64 (static framework `shared`), jvm, js (IR, `binaries.library()` only).
 Edit only inside `~/kmp-agents/KMP_template_shared`. Publishing (`publish*`), propagate and commits are done by the orchestrator.
 
+## CocoaPods
+Shared supports CocoaPods through its podspec for external consumers; KMP_template_ios connects shared via SPM; do not touch the podspec or the `cocoapods` block without a separate task.
+
 ## Searching
 Use `find` and `grep` through Bash (there is no Glob/Grep on this machine), with the pattern in single quotes, for example `grep -rn 'getInfo' KMP_template_shared/shared/src`.
 Paths must be inside `~/kmp-agents`; no `-exec`, `-delete`, pipes or double quotes.

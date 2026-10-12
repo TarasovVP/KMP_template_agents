@@ -1,7 +1,7 @@
 # KMP_template_agents
 
-A harness and a set of [Claude Code](https://claude.com/claude-code) agents for the five repositories of the article
-**"KMP: Integrating into Native Projects"**:
+A harness and a set of [Claude Code](https://claude.com/claude-code) agents for the five repositories used in
+[KMP: Integrating into Native Projects](https://medium.com/@vptarasov/kmp-integrating-into-native-projects-f0f35091706d):
 
 | Repository | What it is |
 |---|---|
@@ -14,7 +14,7 @@ A harness and a set of [Claude Code](https://claude.com/claude-code) agents for 
 An orchestrator agent drives a task through `shared -> propagate -> platform agents -> build-all -> commits`;
 every agent is confined to its own directory by hooks.
 
-> Article about this harness: _link will be added here_ (placeholder).
+> Detailed walkthrough: [AI Agents for a KMP Developer](https://levelup.gitconnected.com/ai-agents-for-a-kmp-developer-82af4e8851a9)
 
 ## Layout
 
